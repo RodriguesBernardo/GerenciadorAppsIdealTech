@@ -10,7 +10,10 @@ import time
 import platform
 import winreg
 import psutil
+import GPUtil
 import logging
+import wmi
+
 
 logging.basicConfig(filename='log do instalador.txt', level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -29,24 +32,82 @@ PROGRAM_URLS = {
     "Windows 10": {
         "Chrome": "https://dl.google.com/chrome/install/latest/chrome_installer.exe",
         "Firefox": "https://download.mozilla.org/?product=firefox-latest&os=win&lang=pt-BR",
-        "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
-        ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
         "WinRAR": "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-624br.exe",  # WinRAR 6.24 (64-bit)
         "AnyDesk": "https://download.anydesk.com/AnyDesk.exe",  # AnyDesk
-        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         "K-Lite Codecs": "https://files3.codecguide.com/K-Lite_Codec_Pack_1790_Basic.exe",  # K-Lite Codecs Basic
+        "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
+        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
+        ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
     },
     "Windows 11": {
         "Chrome": "https://dl.google.com/chrome/install/latest/chrome_installer.exe",
         "Firefox": "https://download.mozilla.org/?product=firefox-latest&os=win&lang=pt-BR",
-        "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
-        ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
         "WinRAR": "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-624br.exe",  # WinRAR 6.24 (64-bit)
         "AnyDesk": "https://download.anydesk.com/AnyDesk.exe",  # AnyDesk
-        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         "K-Lite Codecs": "https://files3.codecguide.com/K-Lite_Codec_Pack_1790_Basic.exe",  # K-Lite Codecs Basic
+        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
+        "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
+        ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
     },
 }
+
+DRIVER_LINKS = {
+    "RTX 4060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
+    "RTX 3060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
+    "RX 6700 XT": "https://www.amd.com/en/support/graphics/amd-radeon-6000-series/amd-radeon-6700-series/amd-radeon-rx-6700-xt",
+}
+
+def obter_info_processador():
+    """Retorna informações sobre o processador."""
+    return platform.processor()
+
+def obter_info_memoria():
+    """Retorna informações sobre a memória RAM."""
+    memoria = psutil.virtual_memory()
+    return f"Total: {memoria.total / 1024 / 1024 / 1024:.2f} GB, Disponível: {memoria.available / 1024 / 1024 / 1024:.2f} GB"
+
+def obter_velocidade_memoria():
+    """Retorna a velocidade da memória RAM (se disponível)."""
+    try:
+        c = wmi.WMI()
+        for mem in c.Win32_PhysicalMemory():
+            return f"{mem.Speed} MHz"
+    except Exception:
+        return "Velocidade da memória não detectada"
+
+def obter_info_placa_video():
+    """Retorna informações sobre a placa de vídeo."""
+    gpus = GPUtil.getGPUs()
+    if len(gpus) > 0:
+        return gpus[0].name
+    else:
+        return "Nenhuma placa de vídeo detectada"
+
+def exibir_configuracoes():
+    """Exibe as configurações do PC em uma nova janela."""
+    config_window = tk.Toplevel(root)
+    config_window.title("Configurações do PC")
+    config_window.geometry("400x300")
+
+    # Exibir informações do sistema operacional
+    windows_version = get_windows_version()
+    ttk.Label(config_window, text=f"Sistema Operacional: {windows_version}").pack(pady=5)
+
+    # Exibir informações do processador
+    processador = obter_info_processador()
+    ttk.Label(config_window, text=f"Processador: {processador}").pack(pady=5)
+
+    # Exibir informações da memória RAM
+    memoria = obter_info_memoria()
+    ttk.Label(config_window, text=f"Memória RAM: {memoria}").pack(pady=5)
+
+    # Exibir velocidade da memória RAM
+    velocidade_memoria = obter_velocidade_memoria()
+    ttk.Label(config_window, text=f"Velocidade da Memória: {velocidade_memoria}").pack(pady=5)
+
+    # Exibir informações da placa de vídeo
+    placa_video = obter_info_placa_video()
+    ttk.Label(config_window, text=f"Placa de Vídeo: {placa_video}").pack(pady=5)
 
 
 def get_windows_version():
@@ -106,6 +167,42 @@ def is_program_installed(program_name):
         return False
     return False
 
+import os
+import subprocess
+import logging
+import tkinter.messagebox as messagebox
+
+def ativar_net_framework_3_5():
+    """Ativa o .NET Framework 3.5 (inclui .NET 2.0 e 3.0) usando o DISM."""
+    try:
+        # Caminho da origem para ativação do .NET Framework
+        source_path = os.path.join(os.environ["SystemRoot"], "WinSxS")
+
+        # Comando para ativar o .NET Framework 3.5 via DISM
+        comando = [
+            "DISM", "/Online", "/Enable-Feature", "/FeatureName:NetFx3", "/All",
+            "/LimitAccess", f'/Source:"{source_path}"'
+        ]
+
+        # Executa o comando
+        resultado = subprocess.run(comando, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # Verifica se o comando foi executado com sucesso
+        if resultado.returncode == 0:
+            messagebox.showinfo("Sucesso", ".NET Framework 3.5 ativado com sucesso!")
+            logging.info(".NET Framework 3.5 ativado com sucesso.")
+        else:
+            messagebox.showerror("Erro", "Falha ao ativar o .NET Framework 3.5.")
+            logging.error("Falha ao ativar o .NET Framework 3.5.")
+
+    except subprocess.CalledProcessError as e:
+        messagebox.showerror("Erro", f"Erro ao ativar o .NET Framework 3.5: {e.stderr}")
+        logging.error(f"Erro ao ativar o .NET Framework 3.5: {e.stderr}")
+
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro inesperado ao ativar o .NET Framework 3.5: {e}")
+        logging.error(f"Erro inesperado ao ativar o .NET Framework 3.5: {e}")
+
 
 def install_dotnet_framework():
     """Instala o .NET Framework se não estiver instalado."""
@@ -161,7 +258,7 @@ def install_program(installer_path):
             raise ValueError(f"Arquivo {installer_path} está vazio ou corrompido.")
 
         subprocess.run([installer_path, "/S", "/quiet"], check=True)
-        messagebox.showinfo("Sucesso", "Programa instalado com sucesso!")
+        # messagebox.showinfo("Sucesso", "Programa instalado com sucesso!")
     except subprocess.CalledProcessError as e:
         messagebox.showerror("Erro", f"Erro ao instalar o programa: {e}")
     except Exception as e:
@@ -169,7 +266,7 @@ def install_program(installer_path):
 
 
 def configure_windows():
-    """Configura o Windows para não suspender ou desligar a tela."""
+    """Configura o Windows para não suspender ou desligar a tela e ativa o .NET Framework 3.5."""
     try:
         # Desativar suspensão (PC e Notebook)
         os.system("powercfg /change standby-timeout-ac 0")  # Nunca suspender (AC)
@@ -181,7 +278,8 @@ def configure_windows():
         # Desativar notificações do UAC (Controle de Conta de Usuário)
         subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "/v", "EnableLUA", "/t", "REG_DWORD", "/d", "0", "/f"])
 
-        logging.info(f'Desativado notificações do controle de conta do usuário')
+        logging.info('Desativado notificações do controle de conta do usuário')
+
         # Desativar notificações de Segurança e Manutenção
         subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings", "/v", "NOC_GLOBAL_SETTING_TOASTS_ENABLED", "/t", "REG_DWORD", "/d", "0", "/f"])
         
@@ -192,15 +290,19 @@ def configure_windows():
         # Desativar o Centro de Ações (Action Center)
         subprocess.run(["reg", "add", "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer", "/v", "DisableNotificationCenter", "/t", "REG_DWORD", "/d", "1", "/f"])
         subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", "/v", "ToastEnabled", "/t", "REG_DWORD", "/d", "0", "/f"])
+
         # Desativar Verificação de Manutenção Automática
         subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\Maintenance", "/v", "MaintenanceDisabled", "/t", "REG_DWORD", "/d", "1", "/f"])
-        logging.info(f'Desativado notificações do controle de seguranca e manutenção')
+        logging.info('Desativado notificações do controle de segurança e manutenção')
+
+        # Ativar o .NET Framework 3.5
+        ativar_net_framework_3_5()
 
         # Perguntar ao usuário se deseja reiniciar o computador
         resposta = messagebox.askyesno("Reiniciar", "As alterações foram aplicadas. Deseja reiniciar o computador agora?")
         if resposta:
-            os.system("shutdown /r /t 3")  # Reinicia o computador após 10 segundos
-            messagebox.showinfo("Reiniciar", "O computador será reiniciado em 10 segundos.")
+            os.system("shutdown /r /t 3")  # Reinicia o computador após 3 segundos
+            messagebox.showinfo("Reiniciar", "O computador será reiniciado em 3 segundos.")
         else:
             messagebox.showinfo("Sucesso", "Configurações do Windows aplicadas com sucesso! Reinicie o computador manualmente para que as alterações entrem em vigor.")
 
@@ -225,7 +327,6 @@ def update_progress(downloaded_size, total_size, elapsed_time):
         root.update_idletasks()
 
 def start_installation():
-    """Inicia o processo de instalação dos programas selecionados."""
     global cancel_event, current_program, installation_in_progress
 
     if installation_in_progress:
@@ -246,7 +347,31 @@ def start_installation():
     logging.info("Iniciando instalação dos programas selecionados.")
 
     def run_installation():
+        # Verifica se a checkbox "Baixar Drivers da Placa de Vídeo" está marcada
+        if "Baixar Drivers da Placa de Vídeo" in selected_programs:
+            placa_video = obter_info_placa_video()
+            if placa_video:
+                link_driver = DRIVER_LINKS.get(placa_video)
+                if link_driver:
+                    messagebox.showinfo(
+                        "Placa de Vídeo Detectada",
+                        f"Placa de vídeo detectada: {placa_video}\n\nIniciando download dos drivers..."
+                    )
+                    destination = os.path.join(os.getcwd(), f"driver_{placa_video.replace(' ', '_')}.exe")
+                    if download_file(link_driver, destination, update_progress):
+                        messagebox.showinfo("Sucesso", f"Drivers da {placa_video} baixados com sucesso!")
+                    else:
+                        messagebox.showerror("Erro", "Falha ao baixar os drivers.")
+                else:
+                    messagebox.showinfo(
+                        "Placa de Vídeo Detectada",
+                        f"Placa de vídeo detectada: {placa_video}\n\nNenhum link de driver disponível."
+                    )
+
         for program in selected_programs:
+            if program == "Baixar Drivers da Placa de Vídeo":
+                continue  # Pula a instalação de drivers, pois já foi tratada acima
+
             global current_program
             current_program = program
 
@@ -389,7 +514,6 @@ def manage_startup_programs():
 
 
 def create_gui():
-    """Cria a interface gráfica do aplicativo."""
     global root, progress_var, progress_label, time_label, programs, program_urls, is_notebook
 
     root = tk.Tk()
@@ -404,13 +528,37 @@ def create_gui():
     system_label = ttk.Label(root, text=f"Tipo de Sistema: {system_type}")
     system_label.pack(pady=5)
 
+    # Exibir informações do sistema operacional
     windows_version = get_windows_version()
     if windows_version not in PROGRAM_URLS:
         messagebox.showerror("Erro", "Sistema operacional não suportado!")
         sys.exit(1)
 
+    ttk.Label(root, text=f"Sistema Operacional: {windows_version}").pack(pady=5)
+
+    # Exibir informações do processador
+    processador = obter_info_processador()
+    # ttk.Label(root, text=f"Processador: {processador}").pack(pady=5)
+
+    # Exibir informações da memória RAM
+    memoria = obter_info_memoria()
+    # ttk.Label(root, text=f"Memória RAM: {memoria}").pack(pady=5)
+
+    # Exibir velocidade da memória RAM
+    velocidade_memoria = obter_velocidade_memoria()
+    # ttk.Label(root, text=f"Velocidade da Memória: {velocidade_memoria}").pack(pady=5)
+
+    # Exibir informações da placa de vídeo
+    placa_video = obter_info_placa_video()
+    # ttk.Label(root, text=f"Placa de Vídeo: {placa_video}").pack(pady=5)
+
+    # Inicializar a variável programs com os programas padrão
     program_urls = PROGRAM_URLS[windows_version]
     programs = {program: tk.BooleanVar() for program in program_urls}
+
+    # Adicionar a checkbox para baixar drivers da placa de vídeo, se detectada
+    if "Nenhuma" not in placa_video:
+        programs["Baixar Drivers da Placa de Vídeo"] = tk.BooleanVar()
 
     # Botão para selecionar/desselecionar todos os programas
     def toggle_all_programs():
@@ -442,7 +590,8 @@ def create_gui():
     # Botão para gerenciar programas de inicialização
     ttk.Button(root, text="Gerenciar Inicialização Automática", command=manage_startup_programs).pack(pady=10)
 
-    ttk.Label(root, text=f"Sistema Operacional: {windows_version}").pack(pady=5)
+    # Botão para verificar configurações do PC
+    ttk.Button(root, text="Verificar Configurações do PC", command=exibir_configuracoes).pack(pady=10)
 
     root.mainloop()
 
