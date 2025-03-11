@@ -357,31 +357,34 @@ def start_installation():
     logging.info("Iniciando instalação dos programas selecionados.")
 
     def run_installation():
-        # Verifica se a checkbox "Baixar Drivers da Placa de Vídeo" está marcada
-        if "Baixar Drivers da Placa de Vídeo" in selected_programs:
-            placa_video = obter_info_placa_video()
-            if placa_video:
-                link_driver = DRIVER_LINKS.get(placa_video)
-                if link_driver:
-                    messagebox.showinfo(
-                        "Placa de Vídeo Detectada",
-                        f"Placa de vídeo detectada: {placa_video}\n\nIniciando download dos drivers..."
-                    )
-                    destination = os.path.join(os.getcwd(), f"driver_{placa_video.replace(' ', '_')}.exe")
-                    if download_file(link_driver, destination, update_progress):
-                        messagebox.showinfo("Sucesso", f"Drivers da {placa_video} baixados com sucesso!")
-                    else:
-                        messagebox.showerror("Erro", "Falha ao baixar os drivers.")
-                else:
-                    messagebox.showinfo(
-                        "Placa de Vídeo Detectada",
-                        f"Placa de vídeo detectada: {placa_video}\n\nNenhum link de driver disponível."
-                    )
+        # Lista para armazenar os arquivos baixados
+        arquivos_baixados = {}
 
-        for program in selected_programs:
-            if program == "Baixar Drivers da Placa de Vídeo":
-                continue  # Pula a instalação de drivers, pois já foi tratada acima
+        def baixar_proximo_instalador(index):
+            """Baixa o instalador do próximo programa em segundo plano."""
+            if index >= len(selected_programs):
+                return
 
+            program = selected_programs[index]
+            if program == ".NET Framework":
+                return  # .NET Framework é instalado separadamente
+
+            url = program_urls.get(program)
+            if not url:
+                logging.error(f"URL não encontrada para {program}.")
+                return
+
+            destination = os.path.join(os.getcwd(), f"{program.replace(' ', '_')}.exe")
+            if download_file(url, destination, update_progress):
+                arquivos_baixados[program] = destination
+                logging.info(f"Instalador de {program} baixado com sucesso.")
+            else:
+                logging.error(f"Falha ao baixar o instalador de {program}.")
+
+        # Baixar o primeiro instalador
+        baixar_proximo_instalador(0)
+
+        for i, program in enumerate(selected_programs):
             global current_program
             current_program = program
 
@@ -395,19 +398,27 @@ def start_installation():
                 install_dotnet_framework()
                 continue
 
-            url = program_urls.get(program)
-            if not url:
-                messagebox.showerror("Erro", f"URL não encontrada para {program}")
-                logging.error(f"URL não encontrada para {program}.")
-                continue
+            # Baixar o próximo instalador em segundo plano
+            if i + 1 < len(selected_programs):
+                Thread(target=baixar_proximo_instalador, args=(i + 1,)).start()
 
-            destination = os.path.join(os.getcwd(), f"{program.replace(' ', '_')}.exe")
-            if download_file(url, destination, update_progress):
-                if cancel_event.is_set():
-                    break
-                install_program(destination)
-                if os.path.exists(destination):
-                    os.remove(destination)
+            # Instalar o programa atual
+            if program in arquivos_baixados:
+                install_program(arquivos_baixados[program])
+                if os.path.exists(arquivos_baixados[program]):
+                    os.remove(arquivos_baixados[program])
+            else:
+                # Se o instalador ainda não foi baixado, aguardar o download
+                while program not in arquivos_baixados and not cancel_event.is_set():
+                    time.sleep(1)
+                if not cancel_event.is_set():
+                    install_program(arquivos_baixados[program])
+                    if os.path.exists(arquivos_baixados[program]):
+                        os.remove(arquivos_baixados[program])
+
+            if cancel_event.is_set():
+                break
+
         if not cancel_event.is_set():
             messagebox.showinfo("Concluído", "Todos os programas foram instalados!")
             logging.info("Todos os programas foram instalados com sucesso.")
@@ -610,9 +621,6 @@ def create_gui():
         ttk.Button(root, text="Baixar Drivers da Placa de Vídeo", command=lambda: abrir_site_drivers(placa_video)).pack(pady=5)
       # Adicionar botão para baixar drivers, se NVIDIA ou AMD for detectada
     
-    if "NVIDIA" in placa_video or "AMD" in placa_video:
-        ttk.Button(root, text="Baixar Drivers da Placa de Vídeo", command=lambda: abrir_site_drivers(placa_video)).pack(pady=5)
-
     if "Nenhuma" not in placa_video:
         programs["Baixar Drivers da Placa de Vídeo"] = tk.BooleanVar()
 
