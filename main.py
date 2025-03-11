@@ -13,7 +13,7 @@ import psutil
 import GPUtil
 import logging
 import wmi
-
+import webbrowser
 
 logging.basicConfig(filename='log do instalador.txt', level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -51,15 +51,23 @@ PROGRAM_URLS = {
     },
 }
 
-DRIVER_LINKS = {
-    "RTX 4060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
-    "RTX 3060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
-    "RX 6700 XT": "https://www.amd.com/en/support/graphics/amd-radeon-6000-series/amd-radeon-6700-series/amd-radeon-rx-6700-xt",
-}
+# DRIVER_LINKS = {
+#    "RTX 4060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
+#   "RTX 3060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
+#    "RX 6700 XT": "https://www.amd.com/en/support/graphics/amd-radeon-6000-series/amd-radeon-6700-series/amd-radeon-rx-6700-xt",
+#}
+
+
 
 def obter_info_processador():
-    """Retorna informações sobre o processador."""
-    return platform.processor()
+    try:
+        import wmi
+        c = wmi.WMI()
+        for processador in c.Win32_Processor():
+            return processador.Name.strip()
+    except Exception as e:
+        logging.error(f"Erro ao obter informações do processador: {e}")
+        return platform.processor()  
 
 def obter_info_memoria():
     """Retorna informações sobre a memória RAM."""
@@ -82,6 +90,8 @@ def obter_info_placa_video():
         return gpus[0].name
     else:
         return "Nenhuma placa de vídeo detectada"
+
+
 
 def exibir_configuracoes():
     """Exibe as configurações do PC em uma nova janela."""
@@ -512,6 +522,16 @@ def manage_startup_programs():
     # Botão para aplicar as alterações
     ttk.Button(manage_window, text="Aplicar Alterações", command=apply_changes).pack(pady=10)
 
+import webbrowser
+
+def abrir_site_drivers(placa_video):
+    """Abre o site de drivers da NVIDIA ou AMD com base na placa de vídeo."""
+    if "NVIDIA" in placa_video:
+        webbrowser.open("https://www.nvidia.com/Download/index.aspx")
+    elif "AMD" in placa_video:
+        webbrowser.open("https://www.amd.com/en/support")
+    else:
+        messagebox.showinfo("Info", "Nenhum link de driver disponível para a placa de vídeo detectada.")
 
 def create_gui():
     global root, progress_var, progress_label, time_label, programs, program_urls, is_notebook
@@ -552,14 +572,12 @@ def create_gui():
     placa_video = obter_info_placa_video()
     # ttk.Label(root, text=f"Placa de Vídeo: {placa_video}").pack(pady=5)
 
+
     # Inicializar a variável programs com os programas padrão
     program_urls = PROGRAM_URLS[windows_version]
     programs = {program: tk.BooleanVar() for program in program_urls}
 
-    # Adicionar a checkbox para baixar drivers da placa de vídeo, se detectada
-    if "Nenhuma" not in placa_video:
-        programs["Baixar Drivers da Placa de Vídeo"] = tk.BooleanVar()
-
+  
     # Botão para selecionar/desselecionar todos os programas
     def toggle_all_programs():
         state = all(var.get() for var in programs.values())
@@ -586,6 +604,17 @@ def create_gui():
     ttk.Button(root, text="Instalar Programas Selecionados", command=start_installation).pack(pady=10)
     ttk.Button(root, text="Cancelar Download", command=cancel_download).pack(pady=5)
     ttk.Button(root, text="Configurar Windows", command=configure_windows).pack(pady=10)
+    
+    # Adicionar botão para baixar drivers, se NVIDIA ou AMD for detectada
+    if "NVIDIA" in placa_video or "AMD" in placa_video:
+        ttk.Button(root, text="Baixar Drivers da Placa de Vídeo", command=lambda: abrir_site_drivers(placa_video)).pack(pady=5)
+      # Adicionar botão para baixar drivers, se NVIDIA ou AMD for detectada
+    
+    if "NVIDIA" in placa_video or "AMD" in placa_video:
+        ttk.Button(root, text="Baixar Drivers da Placa de Vídeo", command=lambda: abrir_site_drivers(placa_video)).pack(pady=5)
+
+    if "Nenhuma" not in placa_video:
+        programs["Baixar Drivers da Placa de Vídeo"] = tk.BooleanVar()
 
     # Botão para gerenciar programas de inicialização
     ttk.Button(root, text="Gerenciar Inicialização Automática", command=manage_startup_programs).pack(pady=10)
@@ -594,7 +623,6 @@ def create_gui():
     ttk.Button(root, text="Verificar Configurações do PC", command=exibir_configuracoes).pack(pady=10)
 
     root.mainloop()
-
 
 if __name__ == "__main__":
     if ctypes.windll.shell32.IsUserAnAdmin() == 0:
