@@ -10,6 +10,9 @@ import time
 import platform
 import winreg
 import psutil
+import logging
+
+logging.basicConfig(filename='log do instalador.txt', level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Variáveis globais
 root = None
@@ -178,6 +181,7 @@ def configure_windows():
         # Desativar notificações do UAC (Controle de Conta de Usuário)
         subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "/v", "EnableLUA", "/t", "REG_DWORD", "/d", "0", "/f"])
 
+        logging.info(f'Desativado notificações do controle de conta do usuário')
         # Desativar notificações de Segurança e Manutenção
         subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings", "/v", "NOC_GLOBAL_SETTING_TOASTS_ENABLED", "/t", "REG_DWORD", "/d", "0", "/f"])
         
@@ -188,14 +192,14 @@ def configure_windows():
         # Desativar o Centro de Ações (Action Center)
         subprocess.run(["reg", "add", "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer", "/v", "DisableNotificationCenter", "/t", "REG_DWORD", "/d", "1", "/f"])
         subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", "/v", "ToastEnabled", "/t", "REG_DWORD", "/d", "0", "/f"])
-
         # Desativar Verificação de Manutenção Automática
         subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\Maintenance", "/v", "MaintenanceDisabled", "/t", "REG_DWORD", "/d", "1", "/f"])
+        logging.info(f'Desativado notificações do controle de seguranca e manutenção')
 
         # Perguntar ao usuário se deseja reiniciar o computador
         resposta = messagebox.askyesno("Reiniciar", "As alterações foram aplicadas. Deseja reiniciar o computador agora?")
         if resposta:
-            os.system("shutdown /r /t 10")  # Reinicia o computador após 10 segundos
+            os.system("shutdown /r /t 3")  # Reinicia o computador após 10 segundos
             messagebox.showinfo("Reiniciar", "O computador será reiniciado em 10 segundos.")
         else:
             messagebox.showinfo("Sucesso", "Configurações do Windows aplicadas com sucesso! Reinicie o computador manualmente para que as alterações entrem em vigor.")
@@ -220,24 +224,26 @@ def update_progress(downloaded_size, total_size, elapsed_time):
         )
         root.update_idletasks()
 
-
 def start_installation():
     """Inicia o processo de instalação dos programas selecionados."""
     global cancel_event, current_program, installation_in_progress
 
     if installation_in_progress:
         messagebox.showwarning("Aviso", "Uma instalação já está em andamento!")
+        logging.warning("Tentativa de iniciar uma nova instalação enquanto outra está em andamento.")
         return
 
     selected_programs = [program for program, var in programs.items() if var.get()]
 
     if not selected_programs:
         messagebox.showwarning("Aviso", "Nenhum programa selecionado!")
+        logging.warning("Nenhum programa selecionado para instalação.")
         return
 
     progress_var.set(0)
     cancel_event = Event()
     installation_in_progress = True
+    logging.info("Iniciando instalação dos programas selecionados.")
 
     def run_installation():
         for program in selected_programs:
@@ -247,6 +253,7 @@ def start_installation():
             # Verifica se o programa já está instalado
             if is_program_installed(program):
                 messagebox.showinfo("Info", f"{program} já está instalado. Pulando instalação.")
+                logging.info(f"Programa {program} já está instalado. Pulando instalação.")
                 continue
 
             if program == ".NET Framework":
@@ -256,6 +263,7 @@ def start_installation():
             url = program_urls.get(program)
             if not url:
                 messagebox.showerror("Erro", f"URL não encontrada para {program}")
+                logging.error(f"URL não encontrada para {program}.")
                 continue
 
             destination = os.path.join(os.getcwd(), f"{program.replace(' ', '_')}.exe")
@@ -267,12 +275,13 @@ def start_installation():
                     os.remove(destination)
         if not cancel_event.is_set():
             messagebox.showinfo("Concluído", "Todos os programas foram instalados!")
+            logging.info("Todos os programas foram instalados com sucesso.")
         progress_label.config(text="Pronto!")
         time_label.config(text="")
-        installation_in_progress = False  # Redefine a variável ao finalizar a instalação
+        installation_in_progress = False
+        logging.info("Instalação concluída.")
 
     Thread(target=run_installation).start()
-
 
 def cancel_download():
     """Cancela o download e exclui o instalador, se existir."""
@@ -280,21 +289,28 @@ def cancel_download():
     if cancel_event:
         cancel_event.set()
         progress_label.config(text="Download cancelado!")
+        logging.info(f'Download do programa {current_program} cancelada!')
         time_label.config(text="")
         if current_program:
             destination = os.path.join(os.getcwd(), f"{current_program.replace(' ', '_')}.exe")
             if os.path.exists(destination):
                 os.remove(destination)
+                logging.info(f'Removido instalador do programa no caminho {destination}')
         installation_in_progress = False  # Redefine a variável para permitir uma nova instalação
 
 
 def detect_notebook():
     """Detecta se o sistema é um notebook ou PC."""
     try:
-        # Verifica se o sistema tem uma bateria (indicando que é um notebook)
         battery = psutil.sensors_battery()
-        return battery is not None
-    except Exception:
+        if battery is not None:
+            logging.info("Notebook detectado.")
+            return True
+        else:
+            logging.info("PC detectado (sem bateria).")
+            return False
+    except Exception as e:
+        logging.error(f"Erro ao detectar notebook ou PC: {e}")
         return False
 
 
@@ -326,6 +342,7 @@ def remove_startup_program(program_name):
         winreg.DeleteValue(reg_key, program_name)
         winreg.CloseKey(reg_key)
         messagebox.showinfo("Sucesso", f"O programa '{program_name}' foi removido da inicialização automática.")
+        logging.info(f'Removendo programa da inicialização automatica: {program_name}')
     except Exception as e:
         messagebox.showerror("Erro", f"Erro ao remover o programa '{program_name}': {e}")
 
