@@ -51,11 +51,11 @@ PROGRAM_URLS = {
     },
 }
 
-# DRIVER_LINKS = {
+DRIVER_LINKS = {
 #    "RTX 4060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
 #   "RTX 3060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
 #    "RX 6700 XT": "https://www.amd.com/en/support/graphics/amd-radeon-6000-series/amd-radeon-6700-series/amd-radeon-rx-6700-xt",
-#}
+}
 
 
 
