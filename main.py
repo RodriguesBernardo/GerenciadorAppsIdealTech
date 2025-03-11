@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, PhotoImage
+from ttkthemes import ThemedTk
 import requests
 import subprocess
 import os
@@ -14,6 +15,7 @@ import GPUtil
 import logging
 import wmi
 import webbrowser
+import time
 
 logging.basicConfig(filename='log do instalador.txt', level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -38,6 +40,10 @@ PROGRAM_URLS = {
         "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
         "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
+        # Programas opcionais
+        "Steam": "https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe",
+        "Spotify": "https://download.scdn.co/SpotifySetup.exe",
+        # "VLC Media Player": "https://get.videolan.org/vlc/last/win64/vlc-3.0.18-win64.exe",
     },
     "Windows 11": {
         "Chrome": "https://dl.google.com/chrome/install/latest/chrome_installer.exe",
@@ -48,13 +54,11 @@ PROGRAM_URLS = {
         "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
         ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
+        # Programas opcionais
+        "Steam": "https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe",
+        "Spotify": "https://download.scdn.co/SpotifySetup.exe",
+        # "VLC Media Player": "https://get.videolan.org/vlc/last/win64/vlc-3.0.18-win64.exe",
     },
-}
-
-DRIVER_LINKS = {
-#    "RTX 4060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
-#   "RTX 3060": "https://www.nvidia.com/Download/driverResults.aspx/213877/en-us/",
-#    "RX 6700 XT": "https://www.amd.com/en/support/graphics/amd-radeon-6000-series/amd-radeon-6700-series/amd-radeon-rx-6700-xt",
 }
 
 
@@ -259,7 +263,7 @@ def download_file(url, destination, progress_callback=None):
         return False
 
 
-def install_program(installer_path):
+def install_program(installer_path, program):
     """Instala um programa a partir do caminho do instalador."""
     try:
         if not os.path.exists(installer_path):
@@ -267,13 +271,23 @@ def install_program(installer_path):
         if os.path.getsize(installer_path) == 0:
             raise ValueError(f"Arquivo {installer_path} está vazio ou corrompido.")
 
-        subprocess.run([installer_path, "/S", "/quiet"], check=True)
-        # messagebox.showinfo("Sucesso", "Programa instalado com sucesso!")
+        # Verificar se a instalacao silenciosa foi selecionada
+        if programas_silenciosos[program].get():
+            if installer_path.endswith(".exe"):
+                subprocess.run([installer_path, "/S", "/quiet"], check=True)
+            elif installer_path.endswith(".msi"):
+                subprocess.run(["msiexec", "/i", installer_path, "/quiet"], check=True)
+            else:
+                subprocess.run([installer_path], check=True)
+        else:
+            subprocess.run([installer_path], check=True)
+
+        messagebox.showinfo("Sucesso", f"{program} instalado com sucesso!")
     except subprocess.CalledProcessError as e:
-        messagebox.showerror("Erro", f"Erro ao instalar o programa: {e}")
+        messagebox.showerror("Erro", f"Erro ao instalar {program}: {e}")
     except Exception as e:
         messagebox.showerror("Erro", f"Erro ao verificar o arquivo: {e}")
-
+        
 
 def configure_windows():
     """Configura o Windows para não suspender ou desligar a tela e ativa o .NET Framework 3.5."""
@@ -339,33 +353,41 @@ def update_progress(downloaded_size, total_size, elapsed_time):
 def start_installation():
     global cancel_event, current_program, installation_in_progress
 
+    # Verificar se já há uma instalacao em andamento
     if installation_in_progress:
-        messagebox.showwarning("Aviso", "Uma instalação já está em andamento!")
-        logging.warning("Tentativa de iniciar uma nova instalação enquanto outra está em andamento.")
+        messagebox.showwarning("Aviso", "Uma instalacao já está em andamento!")
+        logging.warning("Tentativa de iniciar uma nova instalacao enquanto outra está em andamento.")
         return
 
+    # Obter programas selecionados
     selected_programs = [program for program, var in programs.items() if var.get()]
 
+    # Verificar se há programas selecionados
     if not selected_programs:
         messagebox.showwarning("Aviso", "Nenhum programa selecionado!")
-        logging.warning("Nenhum programa selecionado para instalação.")
+        logging.warning("Nenhum programa selecionado para instalacao.")
         return
 
+    # Inicializar variáveis de controle
     progress_var.set(0)
     cancel_event = Event()
     installation_in_progress = True
-    logging.info("Iniciando instalação dos programas selecionados.")
+    logging.info("Iniciando instalacao dos programas selecionados.")
 
     def run_installation():
-        # Lista para armazenar os arquivos baixados
+        # Dicionário para armazenar os arquivos baixados
         arquivos_baixados = {}
 
-        def baixar_proximo_instalador(index):
-            """Baixa o instalador do próximo programa em segundo plano."""
-            if index >= len(selected_programs):
-                return
+        def baixar_instalador(program):
+            """Baixa o instalador de um programa."""
+            global current_program
+            current_program = program  # Atualizar o programa atual
 
-            program = selected_programs[index]
+            # Atualizar a interface para mostrar o programa sendo baixado
+            progress_label.config(text=f"Baixando {program}...")
+            progress_var.set(0)  # Reiniciar a barra de progresso
+            root.update_idletasks()  # Atualizar a interface
+
             if program == ".NET Framework":
                 return  # .NET Framework é instalado separadamente
 
@@ -379,56 +401,63 @@ def start_installation():
                 arquivos_baixados[program] = destination
                 logging.info(f"Instalador de {program} baixado com sucesso.")
             else:
-                logging.error(f"Falha ao baixar o instalador de {program}.")
+                logging.error(f"Falha ao baixar o instalador de {program}. Ou Programa foi Cancelado!")
 
-        # Baixar o primeiro instalador
-        baixar_proximo_instalador(0)
-
-        for i, program in enumerate(selected_programs):
+        # Instalar cada programa selecionado
+        for program in selected_programs:
             global current_program
-            current_program = program
+            current_program = program  # Atualizar o programa atual
 
-            # Verifica se o programa já está instalado
+            # Verificar se o programa já está instalado
             if is_program_installed(program):
-                messagebox.showinfo("Info", f"{program} já está instalado. Pulando instalação.")
-                logging.info(f"Programa {program} já está instalado. Pulando instalação.")
+                messagebox.showinfo("Info", f"{program} já está instalado. Pulando instalacao.")
+                logging.info(f"Programa {program} já está instalado. Pulando instalacao.")
                 continue
 
+            # Instalar .NET Framework separadamente
             if program == ".NET Framework":
                 install_dotnet_framework()
                 continue
 
+            # Baixar o instalador do programa atual
+            baixar_instalador(program)
+
             # Baixar o próximo instalador em segundo plano
-            if i + 1 < len(selected_programs):
-                Thread(target=baixar_proximo_instalador, args=(i + 1,)).start()
+            if selected_programs.index(program) + 1 < len(selected_programs):
+                next_program = selected_programs[selected_programs.index(program) + 1]
+                Thread(target=baixar_instalador, args=(next_program,)).start()
 
             # Instalar o programa atual
             if program in arquivos_baixados:
-                install_program(arquivos_baixados[program])
+                install_program(arquivos_baixados[program], program)
                 if os.path.exists(arquivos_baixados[program]):
                     os.remove(arquivos_baixados[program])
             else:
-                # Se o instalador ainda não foi baixado, aguardar o download
+                # Aguardar o download do instalador, se necessário
                 while program not in arquivos_baixados and not cancel_event.is_set():
                     time.sleep(1)
                 if not cancel_event.is_set():
-                    install_program(arquivos_baixados[program])
+                    install_program(arquivos_baixados[program], program)
                     if os.path.exists(arquivos_baixados[program]):
                         os.remove(arquivos_baixados[program])
 
+            # Verificar se o processo foi cancelado
             if cancel_event.is_set():
                 break
 
+        # Finalizar a instalacao
         if not cancel_event.is_set():
             messagebox.showinfo("Concluído", "Todos os programas foram instalados!")
             logging.info("Todos os programas foram instalados com sucesso.")
         progress_label.config(text="Pronto!")
         time_label.config(text="")
         installation_in_progress = False
-        logging.info("Instalação concluída.")
+        logging.info("instalacao concluída.")
 
+    # Iniciar a instalacao em uma thread separada
     Thread(target=run_installation).start()
 
+    
 def cancel_download():
     """Cancela o download e exclui o instalador, se existir."""
     global installation_in_progress
@@ -440,9 +469,10 @@ def cancel_download():
         if current_program:
             destination = os.path.join(os.getcwd(), f"{current_program.replace(' ', '_')}.exe")
             if os.path.exists(destination):
+                time.sleep(3)
                 os.remove(destination)
                 logging.info(f'Removido instalador do programa no caminho {destination}')
-        installation_in_progress = False  # Redefine a variável para permitir uma nova instalação
+        installation_in_progress = False  # Redefine a variável para permitir uma nova instalacao
 
 
 def detect_notebook():
@@ -544,12 +574,14 @@ def abrir_site_drivers(placa_video):
     else:
         messagebox.showinfo("Info", "Nenhum link de driver disponível para a placa de vídeo detectada.")
 
-def create_gui():
-    global root, progress_var, progress_label, time_label, programs, program_urls, is_notebook
 
-    root = tk.Tk()
+def create_gui():
+    global root, progress_var, progress_label, time_label, programs, program_urls, is_notebook, programas_silenciosos
+
+    # Configuração da janela principal
+    root = ThemedTk(theme="arc")  # Tema moderno
     root.title("Instalador de Programas - IdealTech Soluções em Informática")
-    # root.iconbitmap("icon.ico")
+    root.geometry("800x600")  # Aumentei o tamanho para acomodar as colunas
 
     # Detectar se é notebook ou PC
     is_notebook = detect_notebook()
@@ -567,28 +599,21 @@ def create_gui():
 
     ttk.Label(root, text=f"Sistema Operacional: {windows_version}").pack(pady=5)
 
-    # Exibir informações do processador
-    processador = obter_info_processador()
-    # ttk.Label(root, text=f"Processador: {processador}").pack(pady=5)
-
-    # Exibir informações da memória RAM
-    memoria = obter_info_memoria()
-    # ttk.Label(root, text=f"Memória RAM: {memoria}").pack(pady=5)
-
-    # Exibir velocidade da memória RAM
-    velocidade_memoria = obter_velocidade_memoria()
-    # ttk.Label(root, text=f"Velocidade da Memória: {velocidade_memoria}").pack(pady=5)
-
-    # Exibir informações da placa de vídeo
-    placa_video = obter_info_placa_video()
-    # ttk.Label(root, text=f"Placa de Vídeo: {placa_video}").pack(pady=5)
-
-
     # Inicializar a variável programs com os programas padrão
-    program_urls = PROGRAM_URLS[windows_version]
+    program_urls = PROGRAM_URLS[windows_version]  # Definir program_urls antes de usar
     programs = {program: tk.BooleanVar() for program in program_urls}
 
-  
+    # Variável para instalacao silenciosa
+    programas_silenciosos = {program: tk.BooleanVar() for program in program_urls}
+
+    # Programas marcados por padrão
+    programas_marcados = [
+        "Chrome", "Firefox", "Adobe Reader", "WinRAR", "AnyDesk", "Avast", "K-Lite Codecs"
+    ]
+
+    # Programas com instalacao silenciosa ativada por padrão
+    programas_silenciosos_padrao = ["Chrome", "Firefox", "Adobe Reader", "WinRAR", "K-Lite Codecs"]
+
     # Botão para selecionar/desselecionar todos os programas
     def toggle_all_programs():
         state = all(var.get() for var in programs.values())
@@ -597,32 +622,54 @@ def create_gui():
 
     ttk.Button(root, text="Selecionar/Desselecionar Todos", command=toggle_all_programs).pack(pady=5)
 
-    # Criar checkboxes para seleção de programas (todos marcados por padrão)
-    for program, var in programs.items():
-        var.set(True)  # Marca todos os checkboxes por padrão
-        cb = ttk.Checkbutton(root, text=program, variable=var)
-        cb.pack(anchor="w", padx=10, pady=5)
+    # Frame para os checkboxes
+    checkbox_frame = ttk.Frame(root)
+    checkbox_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+    # Configurar as colunas para centralizar os checkboxes
+    for i in range(5):  # 5 colunas
+        checkbox_frame.columnconfigure(i, weight=1)  # Centralizar as colunas
+
+    # Criar checkboxes para seleção de programas em uma grade 5x5 (5 por coluna)
+    row, col = 0, 0
+    for program, var in programs.items():
+        # Definir se o programa deve vir marcado por padrão
+        if program in programas_marcados:
+            var.set(True)  # Marcado por padrão
+
+        # Marcar como silencioso por padrão, se o programa estiver na lista
+        if program in programas_silenciosos_padrao:
+            programas_silenciosos[program].set(True)
+
+        # Criar o checkbox para seleção do programa
+        cb = ttk.Checkbutton(checkbox_frame, text=program, variable=var)
+        cb.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+
+        # Atualizar a posição na grade
+        row += 1
+        if row >= 5:  # 5 linhas por coluna
+            row = 0
+            col += 1  # Avançar para a próxima coluna
+
+    # Configurar estilo para programas opcionais
+    style = ttk.Style()
+    style.configure("Opcional.TCheckbutton", foreground="blue", font=("Arial", 10, "italic"))
+
+    # Barra de progresso
     progress_var = tk.IntVar()
     ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate", variable=progress_var).pack(pady=10)
 
+    # Labels de status
     progress_label = ttk.Label(root, text="Pronto!")
     progress_label.pack()
 
     time_label = ttk.Label(root, text="")
     time_label.pack()
 
+    # Botões principais
     ttk.Button(root, text="Instalar Programas Selecionados", command=start_installation).pack(pady=10)
     ttk.Button(root, text="Cancelar Download", command=cancel_download).pack(pady=5)
     ttk.Button(root, text="Configurar Windows", command=configure_windows).pack(pady=10)
-    
-    # Adicionar botão para baixar drivers, se NVIDIA ou AMD for detectada
-    if "NVIDIA" in placa_video or "AMD" in placa_video:
-        ttk.Button(root, text="Baixar Drivers da Placa de Vídeo", command=lambda: abrir_site_drivers(placa_video)).pack(pady=5)
-      # Adicionar botão para baixar drivers, se NVIDIA ou AMD for detectada
-    
-    if "Nenhuma" not in placa_video:
-        programs["Baixar Drivers da Placa de Vídeo"] = tk.BooleanVar()
 
     # Botão para gerenciar programas de inicialização
     ttk.Button(root, text="Gerenciar Inicialização Automática", command=manage_startup_programs).pack(pady=10)
@@ -631,7 +678,6 @@ def create_gui():
     ttk.Button(root, text="Verificar Configurações do PC", command=exibir_configuracoes).pack(pady=10)
 
     root.mainloop()
-
 if __name__ == "__main__":
     if ctypes.windll.shell32.IsUserAnAdmin() == 0:
         messagebox.showerror("Erro", "Execute o programa como administrador!")
