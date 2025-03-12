@@ -38,8 +38,8 @@ PROGRAM_URLS = {
         "AnyDesk": "https://download.anydesk.com/AnyDesk.exe",  # AnyDesk
         "K-Lite Codecs": "https://files3.codecguide.com/K-Lite_Codec_Pack_1790_Basic.exe",  # K-Lite Codecs Basic
         "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
-        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
+        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         # Programas opcionais
         "Steam": "https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe",
         "Spotify": "https://download.scdn.co/SpotifySetup.exe",
@@ -51,8 +51,8 @@ PROGRAM_URLS = {
         "WinRAR": "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-624br.exe",  # WinRAR 6.24 (64-bit)
         "AnyDesk": "https://download.anydesk.com/AnyDesk.exe",  # AnyDesk
         "K-Lite Codecs": "https://files3.codecguide.com/K-Lite_Codec_Pack_1790_Basic.exe",  # K-Lite Codecs Basic
-        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
+        "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
         ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
         # Programas opcionais
         "Steam": "https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe",
