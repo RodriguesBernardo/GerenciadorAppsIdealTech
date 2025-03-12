@@ -186,37 +186,6 @@ import subprocess
 import logging
 import tkinter.messagebox as messagebox
 
-def ativar_net_framework_3_5():
-    """Ativa o .NET Framework 3.5 (inclui .NET 2.0 e 3.0) usando o DISM."""
-    try:
-        # Caminho da origem para ativação do .NET Framework
-        source_path = os.path.join(os.environ["SystemRoot"], "WinSxS")
-
-        # Comando para ativar o .NET Framework 3.5 via DISM
-        comando = [
-            "DISM", "/Online", "/Enable-Feature", "/FeatureName:NetFx3", "/All",
-            "/LimitAccess", f'/Source:"{source_path}"'
-        ]
-
-        # Executa o comando
-        resultado = subprocess.run(comando, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-        # Verifica se o comando foi executado com sucesso
-        if resultado.returncode == 0:
-            messagebox.showinfo("Sucesso", ".NET Framework 3.5 ativado com sucesso!")
-            logging.info(".NET Framework 3.5 ativado com sucesso.")
-        else:
-            messagebox.showerror("Erro", "Falha ao ativar o .NET Framework 3.5.")
-            logging.error("Falha ao ativar o .NET Framework 3.5.")
-
-    except subprocess.CalledProcessError as e:
-        messagebox.showerror("Erro", f"Erro ao ativar o .NET Framework 3.5: {e.stderr}")
-        logging.error(f"Erro ao ativar o .NET Framework 3.5: {e.stderr}")
-
-    except Exception as e:
-        messagebox.showerror("Erro", f"Erro inesperado ao ativar o .NET Framework 3.5: {e}")
-        logging.error(f"Erro inesperado ao ativar o .NET Framework 3.5: {e}")
-
 
 def install_dotnet_framework():
     """Instala o .NET Framework se não estiver instalado."""
@@ -262,7 +231,6 @@ def download_file(url, destination, progress_callback=None):
         messagebox.showerror("Erro", f"Erro ao baixar o arquivo: {e}")
         return False
 
-
 def install_program(installer_path, program):
     """Instala um programa a partir do caminho do instalador."""
     try:
@@ -289,50 +257,130 @@ def install_program(installer_path, program):
         messagebox.showerror("Erro", f"Erro ao verificar o arquivo: {e}")
         
 
-def configure_windows():
-    """Configura o Windows para não suspender ou desligar a tela e ativa o .NET Framework 3.5."""
+def ativar_net_framework_3_5():
     try:
-        # Desativar suspensão (PC e Notebook)
-        os.system("powercfg /change standby-timeout-ac 0")  # Nunca suspender (AC)
-        os.system("powercfg /change monitor-timeout-ac 0")  # Nunca desligar a tela (AC)
-        if is_notebook:
-            os.system("powercfg /change standby-timeout-dc 0")  # Nunca suspender (Bateria)
-            os.system("powercfg /change monitor-timeout-dc 0")  # Nunca desligar a tela (Bateria)
+        # Verificar se o .NET Framework 3.5 já está ativado
+        logging.info("Verificando o status do .NET Framework 3.5...")
+        resultado = subprocess.run(
+            ["dism", "/online", "/get-features", "/format:table"],
+            capture_output=True, text=True, check=True
+        )
 
-        # Desativar notificações do UAC (Controle de Conta de Usuário)
-        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "/v", "EnableLUA", "/t", "REG_DWORD", "/d", "0", "/f"])
-
-        logging.info('Desativado notificações do controle de conta do usuário')
-
-        # Desativar notificações de Segurança e Manutenção
-        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings", "/v", "NOC_GLOBAL_SETTING_TOASTS_ENABLED", "/t", "REG_DWORD", "/d", "0", "/f"])
-        
-        # Desativar checkboxes de Segurança e Manutenção
-        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings\\Windows.SystemToast.SecurityAndMaintenance", "/v", "Enabled", "/t", "REG_DWORD", "/d", "0", "/f"])
-        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings\\Windows.SystemToast.SecurityAndMaintenance", "/v", "ShowInActionCenter", "/t", "REG_DWORD", "/d", "0", "/f"])
-
-        # Desativar o Centro de Ações (Action Center)
-        subprocess.run(["reg", "add", "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer", "/v", "DisableNotificationCenter", "/t", "REG_DWORD", "/d", "1", "/f"])
-        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", "/v", "ToastEnabled", "/t", "REG_DWORD", "/d", "0", "/f"])
-
-        # Desativar Verificação de Manutenção Automática
-        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\Maintenance", "/v", "MaintenanceDisabled", "/t", "REG_DWORD", "/d", "1", "/f"])
-        logging.info('Desativado notificações do controle de segurança e manutenção')
+        if "NetFx3 | Enabled" in resultado.stdout:
+            logging.info(".NET Framework 3.5 já está ativado. Nenhuma ação necessária.")
+            return  # Se já estiver ativado, não faz nada
 
         # Ativar o .NET Framework 3.5
-        ativar_net_framework_3_5()
+        logging.info("Ativando o .NET Framework 3.5...")
+        subprocess.run(
+            ["dism", "/online", "/enable-feature", "/featurename:NetFx3", "/all"],
+            check=True
+        )
+        logging.info(".NET Framework 3.5 ativado com sucesso.")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Erro ao ativar o .NET Framework 3.5: {e}")
+        raise
 
-        # Perguntar ao usuário se deseja reiniciar o computador
-        resposta = messagebox.askyesno("Reiniciar", "As alterações foram aplicadas. Deseja reiniciar o computador agora?")
+def configure_windows(progress_bar, progress_label, configure_status_label):
+    """Configura o Windows para não suspender, não desligar a tela, ativa o .NET Framework 3.5 e desativa notificações."""
+    try:
+        # Atualizar a interface gráfica
+        configure_status_label.config(text="Iniciando configuração do Windows...", foreground="blue")
+        progress_bar["value"] = 0
+        root.update()  # Forçar a atualização da interface
+
+        # Desativar suspensão e desligamento da tela
+        configure_status_label.config(text="Desativando suspensão e desligamento da tela...")
+        progress_label.config(text="Desativando suspensão e desligamento da tela...")
+        os.system("powercfg /change standby-timeout-ac 0")
+        os.system("powercfg /change monitor-timeout-ac 0")
+        if is_notebook:
+            os.system("powercfg /change standby-timeout-dc 0")
+            os.system("powercfg /change monitor-timeout-dc 0")
+        progress_bar["value"] = 10
+        root.update()
+        time.sleep(1)
+
+        # Desativar notificações do UAC
+        configure_status_label.config(text="Desativando notificações do UAC...")
+        progress_label.config(text="Desativando notificações do UAC...")
+        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", 
+                        "/v", "EnableLUA", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
+        logging.info('Desativado notificacoes do UAC! ')
+        progress_bar["value"] = 20
+        root.update()
+        time.sleep(1)
+
+        # Desativar notificações de Segurança e Manutenção
+        configure_status_label.config(text="Desativando notificações de Segurança e Manutenção...")
+        progress_label.config(text="Desativando notificações de Segurança e Manutenção...")
+        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings", 
+                        "/v", "NOC_GLOBAL_SETTING_TOASTS_ENABLED", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
+        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Reliability", 
+                        "/v", "EnableSecurityCenter", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
+        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer", 
+                        "/v", "HideSCAHealth", "/t", "REG_DWORD", "/d", "1", "/f"], check=True)
+        logging.info('Desativado notificacoes de seguranca e manutencao ')
+        progress_bar["value"] = 40
+        root.update()
+        time.sleep(1)
+
+        # Desativar o Centro de Ações (Action Center)
+        configure_status_label.config(text="Desativando o Centro de Ações...")
+        progress_label.config(text="Desativando o Centro de Ações...")
+        subprocess.run(["reg", "add", "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer", 
+                        "/v", "DisableNotificationCenter", "/t", "REG_DWORD", "/d", "1", "/f"], check=True)
+        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", 
+                        "/v", "ToastEnabled", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
+        logging.info('Desativado o centro de acoes ')
+        progress_bar["value"] = 60
+        root.update()
+        time.sleep(1)
+
+        # Desativar Verificação de Manutenção Automática
+        configure_status_label.config(text="Desativando Verificação de Manutenção Automática...")
+        progress_label.config(text="Desativando Verificação de Manutenção Automática...")
+        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\Maintenance", 
+                        "/v", "MaintenanceDisabled", "/t", "REG_DWORD", "/d", "1", "/f"], check=True)
+        logging.info('Desativado verificacao de manutencao automatica ')
+        progress_bar["value"] = 80
+        root.update()
+        time.sleep(1)
+
+        # Ativar .NET Framework 3.5
+        # configure_status_label.config(text="Ativando .NET Framework 3.5...")
+        # progress_label.config(text="Ativando .NET Framework 3.5...")
+        # ativar_net_framework_3_5()
+        # progress_bar["value"] = 100
+        # root.update()
+        # time.sleep(1)
+
+        # Conclusão da configuração
+        configure_status_label.config(text="Configurações do Windows aplicadas com sucesso!", foreground="green")
+        progress_label.config(text="Configurações do Windows aplicadas com sucesso!")
+        messagebox.showinfo("Sucesso", "Configurações do Windows aplicadas com sucesso!")
+
+        # Perguntar ao usuário se deseja reiniciar
+        resposta = messagebox.askyesno("Reiniciar", "As alterações foram aplicadas. Deseja reiniciar agora?")
         if resposta:
-            os.system("shutdown /r /t 3")  # Reinicia o computador após 3 segundos
-            messagebox.showinfo("Reiniciar", "O computador será reiniciado em 3 segundos.")
+            configure_status_label.config(text="Reiniciando o computador em 10 segundos...", foreground="blue")
+            progress_label.config(text="Reiniciando o computador em 10 segundos...")
+            root.update()
+            time.sleep(10)  # Esperar 10 segundos antes de reiniciar
+            os.system("shutdown /r /t 0")  # Reiniciar imediatamente
         else:
-            messagebox.showinfo("Sucesso", "Configurações do Windows aplicadas com sucesso! Reinicie o computador manualmente para que as alterações entrem em vigor.")
+            configure_status_label.config(text="Reinicie o computador manualmente para aplicar as alterações.", foreground="blue")
+            progress_label.config(text="Reinicie o computador manualmente para aplicar as alterações.")
+            messagebox.showinfo("Sucesso", "Reinicie o computador manualmente para que as alterações tenham efeito.")
 
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Erro ao executar comando: {e}")
+        configure_status_label.config(text=f"Erro ao configurar o Windows: {e}", foreground="red")
         messagebox.showerror("Erro", f"Erro ao configurar o Windows: {e}")
-
+    except Exception as e:
+        logging.error(f"Erro inesperado: {e}", exc_info=True)
+        configure_status_label.config(text=f"Erro inesperado ao configurar o Windows: {e}", foreground="red")
+        messagebox.showerror("Erro", f"Erro inesperado ao configurar o Windows: {e}")
 
 def update_progress(downloaded_size, total_size, elapsed_time):
     """Atualiza a barra de progresso e o tempo restante."""
@@ -410,8 +458,8 @@ def start_installation():
 
             # Verificar se o programa já está instalado
             if is_program_installed(program):
-                messagebox.showinfo("Info", f"{program} já está instalado. Pulando instalacao.")
-                logging.info(f"Programa {program} já está instalado. Pulando instalacao.")
+                messagebox.showinfo("Info", f"{program} já esta instalado. Pulando instalacao.")
+                logging.info(f"Programa {program} já esta instalado. Pulando instalacao.")
                 continue
 
             # Instalar .NET Framework separadamente
@@ -563,7 +611,6 @@ def manage_startup_programs():
     # Botão para aplicar as alterações
     ttk.Button(manage_window, text="Aplicar Alterações", command=apply_changes).pack(pady=10)
 
-import webbrowser
 
 def abrir_site_drivers(placa_video):
     """Abre o site de drivers da NVIDIA ou AMD com base na placa de vídeo."""
@@ -657,7 +704,8 @@ def create_gui():
 
     # Barra de progresso
     progress_var = tk.IntVar()
-    ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate", variable=progress_var).pack(pady=10)
+    progress_bar = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate", variable=progress_var)
+    progress_bar.pack(pady=10)
 
     # Labels de status
     progress_label = ttk.Label(root, text="Pronto!")
@@ -666,10 +714,14 @@ def create_gui():
     time_label = ttk.Label(root, text="")
     time_label.pack()
 
+    # Exibir atualizações da configuração do Windows
+    configure_status_label = ttk.Label(root, text="", foreground="red")
+    configure_status_label.pack(pady=5)
+
     # Botões principais
     ttk.Button(root, text="Instalar Programas Selecionados", command=start_installation).pack(pady=10)
     ttk.Button(root, text="Cancelar Download", command=cancel_download).pack(pady=5)
-    ttk.Button(root, text="Configurar Windows", command=configure_windows).pack(pady=10)
+    ttk.Button(root, text="Configurar Windows", command=lambda: configure_windows(progress_bar, progress_label, configure_status_label)).pack(pady=10)
 
     # Botão para gerenciar programas de inicialização
     ttk.Button(root, text="Gerenciar Inicialização Automática", command=manage_startup_programs).pack(pady=10)
@@ -678,6 +730,7 @@ def create_gui():
     ttk.Button(root, text="Verificar Configurações do PC", command=exibir_configuracoes).pack(pady=10)
 
     root.mainloop()
+    
 if __name__ == "__main__":
     if ctypes.windll.shell32.IsUserAnAdmin() == 0:
         messagebox.showerror("Erro", "Execute o programa como administrador!")
