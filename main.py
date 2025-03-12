@@ -38,8 +38,8 @@ PROGRAM_URLS = {
         "AnyDesk": "https://download.anydesk.com/AnyDesk.exe",  # AnyDesk
         "K-Lite Codecs": "https://files3.codecguide.com/K-Lite_Codec_Pack_1790_Basic.exe",  # K-Lite Codecs Basic
         "Adobe Reader": "https://admdownload.adobe.com/rdcm/installers/live/readerdc64_ha_crd_install.exe",
-        ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
         "Avast": "https://files.avast.com/iavs9x/avast_free_antivirus_setup_offline.exe",  # Avast Free Antivirus (Offline Installer)
+        ".NET Framework": "https://go.microsoft.com/fwlink/?linkid=2088631",  # .NET Framework 4.8
         # Programas opcionais
         "Steam": "https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe",
         "Spotify": "https://download.scdn.co/SpotifySetup.exe",
