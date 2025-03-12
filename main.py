@@ -259,7 +259,6 @@ def install_program(installer_path, program):
 
 def ativar_net_framework_3_5():
     try:
-        # Verificar se o .NET Framework 3.5 já está ativado
         logging.info("Verificando o status do .NET Framework 3.5...")
         resultado = subprocess.run(
             ["dism", "/online", "/get-features", "/format:table"],
@@ -268,9 +267,8 @@ def ativar_net_framework_3_5():
 
         if "NetFx3 | Enabled" in resultado.stdout:
             logging.info(".NET Framework 3.5 já está ativado. Nenhuma ação necessária.")
-            return  # Se já estiver ativado, não faz nada
+            return
 
-        # Ativar o .NET Framework 3.5
         logging.info("Ativando o .NET Framework 3.5...")
         subprocess.run(
             ["dism", "/online", "/enable-feature", "/featurename:NetFx3", "/all"],
@@ -282,97 +280,58 @@ def ativar_net_framework_3_5():
         raise
 
 def configure_windows(progress_bar, progress_label, configure_status_label):
-    """Configura o Windows para não suspender, não desligar a tela, ativa o .NET Framework 3.5 e desativa notificações."""
     try:
-        # Atualizar a interface gráfica
         configure_status_label.config(text="Iniciando configuração do Windows...", foreground="blue")
         progress_bar["value"] = 0
-        root.update()  # Forçar a atualização da interface
+        root.update()
 
-        # Desativar suspensão e desligamento da tela
         configure_status_label.config(text="Desativando suspensão e desligamento da tela...")
         progress_label.config(text="Desativando suspensão e desligamento da tela...")
         os.system("powercfg /change standby-timeout-ac 0")
         os.system("powercfg /change monitor-timeout-ac 0")
-        if is_notebook:
-            os.system("powercfg /change standby-timeout-dc 0")
-            os.system("powercfg /change monitor-timeout-dc 0")
         progress_bar["value"] = 10
         root.update()
         time.sleep(1)
 
-        # Desativar notificações do UAC
         configure_status_label.config(text="Desativando notificações do UAC...")
         progress_label.config(text="Desativando notificações do UAC...")
         subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", 
                         "/v", "EnableLUA", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
-        logging.info('Desativado notificacoes do UAC! ')
+        logging.info('Desativado notificações do UAC!')
         progress_bar["value"] = 20
         root.update()
         time.sleep(1)
 
-        # Desativar notificações de Segurança e Manutenção
-        configure_status_label.config(text="Desativando notificações de Segurança e Manutenção...")
-        progress_label.config(text="Desativando notificações de Segurança e Manutenção...")
+        configure_status_label.config(text="Desativando todas as notificações de Segurança e Manutenção...")
+        progress_label.config(text="Desativando todas as notificações de Segurança e Manutenção...")
         subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings", 
                         "/v", "NOC_GLOBAL_SETTING_TOASTS_ENABLED", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
-        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Reliability", 
-                        "/v", "EnableSecurityCenter", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
-        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer", 
-                        "/v", "HideSCAHealth", "/t", "REG_DWORD", "/d", "1", "/f"], check=True)
-        logging.info('Desativado notificacoes de seguranca e manutencao ')
-        progress_bar["value"] = 40
+        logging.info('Todas as notificações foram desativadas.')
+        progress_bar["value"] = 50
+        root.update()
+        configure_status_label.config(text="Ativando .NET Framework 3.5...")
+        time.sleep(1)
+        progress_label.config(text="Ativando .NET Framework 3.5...")
+        ativar_net_framework_3_5()
+        progress_bar["value"] = 100
         root.update()
         time.sleep(1)
 
-        # Desativar o Centro de Ações (Action Center)
-        configure_status_label.config(text="Desativando o Centro de Ações...")
-        progress_label.config(text="Desativando o Centro de Ações...")
-        subprocess.run(["reg", "add", "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer", 
-                        "/v", "DisableNotificationCenter", "/t", "REG_DWORD", "/d", "1", "/f"], check=True)
-        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", 
-                        "/v", "ToastEnabled", "/t", "REG_DWORD", "/d", "0", "/f"], check=True)
-        logging.info('Desativado o centro de acoes ')
-        progress_bar["value"] = 60
-        root.update()
-        time.sleep(1)
-
-        # Desativar Verificação de Manutenção Automática
-        configure_status_label.config(text="Desativando Verificação de Manutenção Automática...")
-        progress_label.config(text="Desativando Verificação de Manutenção Automática...")
-        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\Maintenance", 
-                        "/v", "MaintenanceDisabled", "/t", "REG_DWORD", "/d", "1", "/f"], check=True)
-        logging.info('Desativado verificacao de manutencao automatica ')
-        progress_bar["value"] = 80
-        root.update()
-        time.sleep(1)
-
-        # Ativar .NET Framework 3.5
-        # configure_status_label.config(text="Ativando .NET Framework 3.5...")
-        # progress_label.config(text="Ativando .NET Framework 3.5...")
-        # ativar_net_framework_3_5()
-        # progress_bar["value"] = 100
-        # root.update()
-        # time.sleep(1)
-
-        # Conclusão da configuração
         configure_status_label.config(text="Configurações do Windows aplicadas com sucesso!", foreground="green")
         progress_label.config(text="Configurações do Windows aplicadas com sucesso!")
         messagebox.showinfo("Sucesso", "Configurações do Windows aplicadas com sucesso!")
 
-        # Perguntar ao usuário se deseja reiniciar
         resposta = messagebox.askyesno("Reiniciar", "As alterações foram aplicadas. Deseja reiniciar agora?")
         if resposta:
             configure_status_label.config(text="Reiniciando o computador em 10 segundos...", foreground="blue")
             progress_label.config(text="Reiniciando o computador em 10 segundos...")
             root.update()
-            time.sleep(10)  # Esperar 10 segundos antes de reiniciar
-            os.system("shutdown /r /t 0")  # Reiniciar imediatamente
+            time.sleep(10)
+            os.system("shutdown /r /t 0")
         else:
             configure_status_label.config(text="Reinicie o computador manualmente para aplicar as alterações.", foreground="blue")
             progress_label.config(text="Reinicie o computador manualmente para aplicar as alterações.")
             messagebox.showinfo("Sucesso", "Reinicie o computador manualmente para que as alterações tenham efeito.")
-
     except subprocess.CalledProcessError as e:
         logging.error(f"Erro ao executar comando: {e}")
         configure_status_label.config(text=f"Erro ao configurar o Windows: {e}", foreground="red")
@@ -392,7 +351,18 @@ def update_progress(downloaded_size, total_size, elapsed_time):
             remaining_size = total_size - downloaded_size
             if download_speed > 0:
                 remaining_time = remaining_size / download_speed
-                time_label.config(text=f"Tempo restante: {int(remaining_time)} segundos")
+                # Converte o tempo restante para minutos e segundos
+                if remaining_time > 60:
+                    minutes = int(remaining_time // 60)
+                    seconds = int(remaining_time % 60)
+                    if minutes > 60:
+                        hours = int(minutes // 60)
+                        minutes = int(minutes % 60)
+                        time_label.config(text=f"Tempo restante: {hours} horas, {minutes} minutos e {seconds} segundos")
+                    else:
+                        time_label.config(text=f"Tempo restante: {minutes} minutos e {seconds} segundos")
+                else:
+                    time_label.config(text=f"Tempo restante: {int(remaining_time)} segundos")
         progress_label.config(
             text=f"Baixando: {current_program} ({downloaded_size / 1024 / 1024:.2f} MB / {total_size / 1024 / 1024:.2f} MB)"
         )
@@ -628,8 +598,7 @@ def create_gui():
     # Configuração da janela principal
     root = ThemedTk(theme="arc")  # Tema moderno
     root.title("Instalador de Programas - IdealTech Soluções em Informática")
-    root.geometry("800x600")  # Aumentei o tamanho para acomodar as colunas
-
+    root.geometry("420x710")  # Aumentei o tamanho para acomodar as colunas
     # Detectar se é notebook ou PC
     is_notebook = detect_notebook()
 
