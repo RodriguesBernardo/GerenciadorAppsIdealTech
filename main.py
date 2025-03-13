@@ -61,8 +61,6 @@ PROGRAM_URLS = {
     },
 }
 
-
-
 def obter_info_processador():
     try:
         import wmi
@@ -95,8 +93,6 @@ def obter_info_placa_video():
     else:
         return "Nenhuma placa de vídeo detectada"
 
-
-
 def exibir_configuracoes():
     """Exibe as configurações do PC em uma nova janela."""
     config_window = tk.Toplevel(root)
@@ -123,7 +119,6 @@ def exibir_configuracoes():
     placa_video = obter_info_placa_video()
     ttk.Label(config_window, text=f"Placa de Vídeo: {placa_video}").pack(pady=5)
 
-
 def get_windows_version():
     """Retorna a versão do Windows (10 ou 11)."""
     version = platform.version()
@@ -134,7 +129,6 @@ def get_windows_version():
     else:
         return "Windows Desconhecido"
 
-
 def is_dotnet_installed():
     """Verifica se o .NET Framework 4.8 ou superior está instalado."""
     try:
@@ -144,7 +138,6 @@ def is_dotnet_installed():
         return release >= 528040
     except Exception:
         return False
-
 
 def is_program_installed(program_name):
     """Verifica se um programa já está instalado."""
@@ -181,12 +174,6 @@ def is_program_installed(program_name):
         return False
     return False
 
-import os
-import subprocess
-import logging
-import tkinter.messagebox as messagebox
-
-
 def install_dotnet_framework():
     """Instala o .NET Framework se não estiver instalado."""
     if is_dotnet_installed():
@@ -205,7 +192,6 @@ def install_dotnet_framework():
         finally:
             if os.path.exists(destination):
                 os.remove(destination)
-
 
 def download_file(url, destination, progress_callback=None):
     """Baixa um arquivo da internet com barra de progresso."""
@@ -256,7 +242,6 @@ def install_program(installer_path, program):
     except Exception as e:
         messagebox.showerror("Erro", f"Erro ao verificar o arquivo: {e}")
         
-
 def ativar_net_framework_3_5():
     try:
         logging.info("Verificando o status do .NET Framework 3.5...")
@@ -474,7 +459,6 @@ def start_installation():
 
     # Iniciar a instalacao em uma thread separada
     Thread(target=run_installation).start()
-
     
 def cancel_download():
     """Cancela o download e exclui o instalador, se existir."""
@@ -492,7 +476,6 @@ def cancel_download():
                 logging.info(f'Removido instalador do programa no caminho {destination}')
         installation_in_progress = False  # Redefine a variável para permitir uma nova instalacao
 
-
 def detect_notebook():
     """Detecta se o sistema é um notebook ou PC."""
     try:
@@ -506,7 +489,6 @@ def detect_notebook():
     except Exception as e:
         logging.error(f"Erro ao detectar notebook ou PC: {e}")
         return False
-
 
 def list_startup_programs():
     """Lista os programas que iniciam automaticamente com o Windows."""
@@ -528,7 +510,6 @@ def list_startup_programs():
         messagebox.showerror("Erro", f"Erro ao acessar o Registro do Windows: {e}")
     return startup_programs
 
-
 def remove_startup_program(program_name):
     """Remove um programa da lista de inicialização automática."""
     try:
@@ -539,7 +520,6 @@ def remove_startup_program(program_name):
         logging.info(f'Removendo programa da inicialização automatica: {program_name}')
     except Exception as e:
         messagebox.showerror("Erro", f"Erro ao remover o programa '{program_name}': {e}")
-
 
 def manage_startup_programs():
     """Exibe uma interface para gerenciar os programas que iniciam automaticamente."""
@@ -581,7 +561,6 @@ def manage_startup_programs():
     # Botão para aplicar as alterações
     ttk.Button(manage_window, text="Aplicar Alterações", command=apply_changes).pack(pady=10)
 
-
 def abrir_site_drivers(placa_video):
     """Abre o site de drivers da NVIDIA ou AMD com base na placa de vídeo."""
     if "NVIDIA" in placa_video:
@@ -590,7 +569,6 @@ def abrir_site_drivers(placa_video):
         webbrowser.open("https://www.amd.com/en/support")
     else:
         messagebox.showinfo("Info", "Nenhum link de driver disponível para a placa de vídeo detectada.")
-
 
 def create_gui():
     global root, progress_var, progress_label, time_label, programs, program_urls, is_notebook, programas_silenciosos
