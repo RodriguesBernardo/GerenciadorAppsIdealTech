@@ -16,8 +16,11 @@ import logging
 import wmi
 import webbrowser
 import time
-
-logging.basicConfig(filename='log do instalador.txt', level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+import webbrowser
+import wmi
+from tkinter import messagebox
+import requests
+from bs4 import BeautifulSoup
 
 # Variáveis globais
 root = None
@@ -29,8 +32,12 @@ current_program = None
 is_notebook = None
 installation_in_progress = False
 
-# URLs dos programas (dependendo da versão do Windows)
+logging.basicConfig(filename='log do instalador.txt', level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 PROGRAM_URLS = {
+
+
+# URLs dos programas (dependendo da versão do Windows)
     "Windows 10": {
         "Chrome": "https://dl.google.com/chrome/install/latest/chrome_installer.exe",
         "Firefox": "https://download.mozilla.org/?product=firefox-latest&os=win&lang=pt-BR",
@@ -60,6 +67,76 @@ PROGRAM_URLS = {
         # "VLC Media Player": "https://get.videolan.org/vlc/last/win64/vlc-3.0.18-win64.exe",
     },
 }
+
+def detectar_placa_video():
+    """Detecta a placa de vídeo instalada no sistema."""
+    c = wmi.WMI()
+    placas_video = []
+
+    for dispositivo in c.Win32_VideoController():
+        placas_video.append(dispositivo.Name)
+
+    return placas_video
+
+def obter_driver_nvidia(modelo):
+    """Obtém o link do driver mais recente para uma placa NVIDIA."""
+    url = "https://www.nvidia.com/Download/processFind.aspx"
+    params = {
+        "psid": "123",  # Substitua pelo PSID correto, se disponível
+        "pfid": "456",  # Substitua pelo PFID correto, se disponível
+        "osid": "57",   # Windows 10 64-bit (ajuste conforme necessário)
+        "lid": "1",     # Idioma: Inglês
+        "whql": "1",    # WHQL Certified
+        "lang": "en-us",
+        "ctk": "0"
+    }
+
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        link_driver = soup.find("a", {"id": "lnkDownload"})
+        if link_driver:
+            return link_driver["href"]
+    return None
+
+def obter_driver_amd(modelo):
+    """Obtém o link do driver mais recente para uma placa AMD."""
+    url = f"https://www.amd.com/en/support/search?query={modelo}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        link_driver = soup.find("a", {"class": "download-link"})
+        if link_driver:
+            return link_driver["href"]
+    return None
+
+def abrir_site_drivers():
+    """Abre o site de drivers da NVIDIA ou AMD com base na placa de vídeo detectada."""
+    placas_video = detectar_placa_video()
+
+    if not placas_video:
+        messagebox.showinfo("Info", "Nenhuma placa de vídeo detectada.")
+        return
+
+    for placa in placas_video:
+        if "NVIDIA" in placa:
+            modelo = placa.split("NVIDIA")[-1].strip()
+            driver_url = obter_driver_nvidia(modelo)
+            if driver_url:
+                webbrowser.open(driver_url)
+            else:
+                webbrowser.open("https://www.nvidia.com/Download/index.aspx")
+            break
+        elif "AMD" in placa or "Radeon" in placa:
+            modelo = placa.split("AMD")[-1].strip()
+            driver_url = obter_driver_amd(modelo)
+            if driver_url:
+                webbrowser.open(driver_url)
+            else:
+                webbrowser.open("https://www.amd.com/en/support")
+            break
+    else:
+        messagebox.showinfo("Info", "Nenhum link de driver disponível para a placa de vídeo detectada.")
 
 def obter_info_processador():
     try:
@@ -354,12 +431,12 @@ def update_progress(downloaded_size, total_size, elapsed_time):
         root.update_idletasks()
 
 def start_installation():
-    global cancel_event, current_program, installation_in_progress
+    global cancel_event, installation_in_progress
 
-    # Verificar se já há uma instalacao em andamento
+    # Verificar se já há uma instalação em andamento
     if installation_in_progress:
-        messagebox.showwarning("Aviso", "Uma instalacao já está em andamento!")
-        logging.warning("Tentativa de iniciar uma nova instalacao enquanto outra está em andamento.")
+        messagebox.showwarning("Aviso", "Uma instalação já está em andamento!")
+        logging.warning("Tentativa de iniciar uma nova instalação enquanto outra está em andamento.")
         return
 
     # Obter programas selecionados
@@ -368,96 +445,85 @@ def start_installation():
     # Verificar se há programas selecionados
     if not selected_programs:
         messagebox.showwarning("Aviso", "Nenhum programa selecionado!")
-        logging.warning("Nenhum programa selecionado para instalacao.")
+        logging.warning("Nenhum programa selecionado para instalação.")
         return
 
     # Inicializar variáveis de controle
     progress_var.set(0)
     cancel_event = Event()
     installation_in_progress = True
-    logging.info("Iniciando instalacao dos programas selecionados.")
+    logging.info("Iniciando instalação dos programas selecionados.")
 
-    def run_installation():
-        # Dicionário para armazenar os arquivos baixados
-        arquivos_baixados = {}
+    def install_program(program):
+        """Função para instalar um programa."""
+        global current_program
+        current_program = program  # Atualizar o programa atual
 
-        def baixar_instalador(program):
-            """Baixa o instalador de um programa."""
-            global current_program
-            current_program = program  # Atualizar o programa atual
+        # Verificar se o programa já está instalado
+        if is_program_installed(program):
+            logging.info(f"Programa {program} já está instalado. Pulando instalação.")
+            return
 
-            # Atualizar a interface para mostrar o programa sendo baixado
-            progress_label.config(text=f"Baixando {program}...")
-            progress_var.set(0)  # Reiniciar a barra de progresso
-            root.update_idletasks()  # Atualizar a interface
+        # Baixar o instalador
+        url = program_urls.get(program)
+        if not url:
+            logging.error(f"URL não encontrada para {program}.")
+            return
 
-            if program == ".NET Framework":
-                return  # .NET Framework é instalado separadamente
+        destination = os.path.join(os.getcwd(), f"{program.replace(' ', '_')}.exe")
+        if not download_file(url, destination, update_progress):
+            logging.error(f"Falha ao baixar o instalador de {program}.")
+            return
 
-            url = program_urls.get(program)
-            if not url:
-                logging.error(f"URL não encontrada para {program}.")
-                return
-
-            destination = os.path.join(os.getcwd(), f"{program.replace(' ', '_')}.exe")
-            if download_file(url, destination, update_progress):
-                arquivos_baixados[program] = destination
-                logging.info(f"Instalador de {program} baixado com sucesso.")
-            else:
-                logging.error(f"Falha ao baixar o instalador de {program}. Ou Programa foi Cancelado!")
-
-        # Instalar cada programa selecionado
-        for program in selected_programs:
-            global current_program
-            current_program = program  # Atualizar o programa atual
-
-            # Verificar se o programa já está instalado
-            if is_program_installed(program):
-                messagebox.showinfo("Info", f"{program} já esta instalado. Pulando instalacao.")
-                logging.info(f"Programa {program} já esta instalado. Pulando instalacao.")
-                continue
-
-            # Instalar .NET Framework separadamente
+        # Instalar o programa
+        try:
             if program == ".NET Framework":
                 install_dotnet_framework()
-                continue
-
-            # Baixar o instalador do programa atual
-            baixar_instalador(program)
-
-            # Baixar o próximo instalador em segundo plano
-            if selected_programs.index(program) + 1 < len(selected_programs):
-                next_program = selected_programs[selected_programs.index(program) + 1]
-                Thread(target=baixar_instalador, args=(next_program,)).start()
-
-            # Instalar o programa atual
-            if program in arquivos_baixados:
-                install_program(arquivos_baixados[program], program)
-                if os.path.exists(arquivos_baixados[program]):
-                    os.remove(arquivos_baixados[program])
             else:
-                # Aguardar o download do instalador, se necessário
-                while program not in arquivos_baixados and not cancel_event.is_set():
-                    time.sleep(1)
-                if not cancel_event.is_set():
-                    install_program(arquivos_baixados[program], program)
-                    if os.path.exists(arquivos_baixados[program]):
-                        os.remove(arquivos_baixados[program])
+                # Parâmetros de instalação silenciosa (ajuste conforme necessário)
+                silent_params = {
+                    "Chrome": "/silent /install",
+                    "Firefox": "/S",
+                    "Adobe Reader": "/sAll /rs /rps /msi /norestart /quiet",
+                    "WinRAR": "/S",
+                    "AnyDesk": "--silent",
+                    "Avast": "/silent",
+                    "K-Lite Codecs": "/verysilent"
+                }
+                params = silent_params.get(program, "/S")  # Usar /S como padrão
+                subprocess.run([destination, params], check=True)
+                logging.info(f"Programa {program} instalado com sucesso.")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Erro ao instalar {program}: {e}")
+        finally:
+            # Remover o instalador após a instalação
+            if os.path.exists(destination):
+                os.remove(destination)
 
-            # Verificar se o processo foi cancelado
+    def run_installation():
+        """Função principal para executar a instalação em paralelo."""
+        threads = []
+        for program in selected_programs:
             if cancel_event.is_set():
                 break
+            thread = Thread(target=install_program, args=(program,))
+            thread.start()
+            threads.append(thread)
 
-        # Finalizar a instalacao
+        # Aguardar todas as threads terminarem
+        for thread in threads:
+            thread.join()
+
+        # Finalizar a instalação
         if not cancel_event.is_set():
             messagebox.showinfo("Concluído", "Todos os programas foram instalados!")
             logging.info("Todos os programas foram instalados com sucesso.")
         progress_label.config(text="Pronto!")
         time_label.config(text="")
         installation_in_progress = False
-        logging.info("instalacao concluída.")
+        logging.info("Instalação concluída.")
 
-    # Iniciar a instalacao em uma thread separada
+    # Iniciar a instalação em uma thread separada
     Thread(target=run_installation).start()
     
 def cancel_download():
@@ -561,14 +627,73 @@ def manage_startup_programs():
     # Botão para aplicar as alterações
     ttk.Button(manage_window, text="Aplicar Alterações", command=apply_changes).pack(pady=10)
 
-def abrir_site_drivers(placa_video):
-    """Abre o site de drivers da NVIDIA ou AMD com base na placa de vídeo."""
-    if "NVIDIA" in placa_video:
-        webbrowser.open("https://www.nvidia.com/Download/index.aspx")
-    elif "AMD" in placa_video:
-        webbrowser.open("https://www.amd.com/en/support")
+""" def detectar_placa_video():
+    c = wmi.WMI()
+    placas_video = []
+
+    for dispositivo in c.Win32_VideoController():
+        placas_video.append(dispositivo.Name)
+
+    return placas_video
+
+def obter_driver_nvidia(modelo):
+
+    url = "https://www.nvidia.com/Download/processFind.aspx"
+    params = {
+        "psid": "123",  # Substitua pelo PSID correto, se disponível
+        "pfid": "456",  # Substitua pelo PFID correto, se disponível
+        "osid": "57",   # Windows 10 64-bit (ajuste conforme necessário)
+        "lid": "1",     # Idioma: Inglês
+        "whql": "1",    # WHQL Certified
+        "lang": "en-us",
+        "ctk": "0"
+    }
+
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        link_driver = soup.find("a", {"id": "lnkDownload"})
+        if link_driver:
+            return link_driver["href"]
+    return None
+
+def obter_driver_amd(modelo):
+    url = f"https://www.amd.com/en/support/search?query={modelo}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        link_driver = soup.find("a", {"class": "download-link"})
+        if link_driver:
+            return link_driver["href"]
+    return None
+
+def abrir_site_drivers():
+    placas_video = detectar_placa_video()
+
+    if not placas_video:
+        messagebox.showinfo("Info", "Nenhuma placa de vídeo detectada.")
+        return
+
+    for placa in placas_video:
+        if "NVIDIA" in placa:
+            modelo = placa.split("NVIDIA")[-1].strip()
+            driver_url = obter_driver_nvidia(modelo)
+            if driver_url:
+                webbrowser.open(driver_url)
+            else:
+                webbrowser.open("https://www.nvidia.com/Download/index.aspx")
+            break
+        elif "AMD" in placa or "Radeon" in placa:
+            modelo = placa.split("AMD")[-1].strip()
+            driver_url = obter_driver_amd(modelo)
+            if driver_url:
+                webbrowser.open(driver_url)
+            else:
+                webbrowser.open("https://www.amd.com/en/support")
+            break
     else:
         messagebox.showinfo("Info", "Nenhum link de driver disponível para a placa de vídeo detectada.")
+ """
 
 def create_gui():
     global root, progress_var, progress_label, time_label, programs, program_urls, is_notebook, programas_silenciosos
@@ -577,6 +702,7 @@ def create_gui():
     root = ThemedTk(theme="arc")  # Tema moderno
     root.title("Instalador de Programas - IdealTech Soluções em Informática")
     root.geometry("420x710")  # Aumentei o tamanho para acomodar as colunas
+
     # Detectar se é notebook ou PC
     is_notebook = detect_notebook()
 
@@ -597,7 +723,7 @@ def create_gui():
     program_urls = PROGRAM_URLS[windows_version]  # Definir program_urls antes de usar
     programs = {program: tk.BooleanVar() for program in program_urls}
 
-    # Variável para instalacao silenciosa
+    # Variável para instalação silenciosa
     programas_silenciosos = {program: tk.BooleanVar() for program in program_urls}
 
     # Programas marcados por padrão
@@ -605,7 +731,7 @@ def create_gui():
         "Chrome", "Firefox", "Adobe Reader", "WinRAR", "AnyDesk", "Avast", "K-Lite Codecs"
     ]
 
-    # Programas com instalacao silenciosa ativada por padrão
+    # Programas com instalação silenciosa ativada por padrão
     programas_silenciosos_padrao = ["Chrome", "Firefox", "Adobe Reader", "WinRAR", "K-Lite Codecs"]
 
     # Botão para selecionar/desselecionar todos os programas
@@ -675,6 +801,9 @@ def create_gui():
 
     # Botão para verificar configurações do PC
     ttk.Button(root, text="Verificar Configurações do PC", command=exibir_configuracoes).pack(pady=10)
+
+    # Botão para verificar e baixar drivers
+    ttk.Button(root, text="Verificar GPU e Baixar Drivers", command=abrir_site_drivers).pack(pady=10)
 
     root.mainloop()
     

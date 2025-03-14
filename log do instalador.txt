@@ -1,0 +1,60 @@
+2025-03-12 19:03:07,430 - INFO - PC detectado (sem bateria).
+2025-03-12 19:03:12,567 - INFO - Iniciando instalacao dos programas selecionados.
+2025-03-12 19:04:11,619 - INFO - Instalador de Avast baixado com sucesso.
+2025-03-12 19:05:44,970 - INFO - Download do programa Avast cancelada!
+2025-03-12 19:05:48,020 - INFO - Removido instalador do programa no caminho C:\Users\bezudo\Desktop\Programacao\IdealTech\Git\GerenciadorAppsIdealTech\Avast.exe
+2025-03-12 19:05:53,179 - INFO - instalacao concluída.
+2025-03-12 19:05:55,033 - INFO - Download do programa Avast cancelada!
+2025-03-12 19:06:40,924 - INFO - PC detectado (sem bateria).
+2025-03-12 19:06:45,952 - INFO - Iniciando instalacao dos programas selecionados.
+2025-03-12 19:06:47,123 - INFO - Programa Avast já esta instalado. Pulando instalacao.
+2025-03-12 19:06:47,956 - INFO - Todos os programas foram instalados com sucesso.
+2025-03-12 19:06:47,956 - INFO - instalacao concluída.
+2025-03-12 19:06:48,830 - INFO - Download do programa Avast cancelada!
+2025-03-12 19:06:49,314 - INFO - Download do programa Avast cancelada!
+2025-03-12 19:06:49,439 - INFO - Download do programa Avast cancelada!
+2025-03-12 19:06:49,563 - INFO - Download do programa Avast cancelada!
+2025-03-12 19:06:51,753 - INFO - Iniciando instalacao dos programas selecionados.
+2025-03-12 19:06:53,340 - INFO - Download do programa Adobe Reader cancelada!
+2025-03-12 19:06:56,373 - ERROR - Falha ao baixar o instalador de Adobe Reader. Ou Programa foi Cancelado!
+2025-03-12 19:06:56,373 - INFO - Download do programa Adobe Reader cancelada!
+2025-03-12 19:06:59,375 - INFO - Removido instalador do programa no caminho C:\Users\bezudo\Desktop\Programacao\IdealTech\Git\GerenciadorAppsIdealTech\Adobe_Reader.exe
+2025-03-12 19:06:59,375 - INFO - instalacao concluída.
+2025-03-12 19:07:27,455 - INFO - PC detectado (sem bateria).
+2025-03-12 19:07:47,066 - INFO - PC detectado (sem bateria).
+2025-03-12 19:07:59,991 - INFO - PC detectado (sem bateria).
+2025-03-12 19:08:10,132 - INFO - PC detectado (sem bateria).
+2025-03-12 19:08:26,615 - INFO - PC detectado (sem bateria).
+2025-03-12 19:08:44,497 - INFO - PC detectado (sem bateria).
+2025-03-12 19:11:47,826 - INFO - PC detectado (sem bateria).
+2025-03-12 19:11:51,150 - INFO - Desativado notificacoes do UAC! 
+2025-03-12 19:11:52,277 - INFO - Todas as notificações de segurança e manutenção foram desativadas.
+2025-03-12 19:11:53,322 - INFO - Desativado o centro de acoes 
+2025-03-12 19:11:54,362 - INFO - Desativado verificacao de manutencao automatica 
+2025-03-12 19:12:08,013 - INFO - Desativado notificacoes do UAC! 
+2025-03-12 19:12:09,124 - INFO - Todas as notificações de segurança e manutenção foram desativadas.
+2025-03-12 19:12:10,192 - INFO - Desativado o centro de acoes 
+2025-03-12 19:12:11,233 - INFO - Desativado verificacao de manutencao automatica 
+2025-03-12 19:17:10,681 - INFO - PC detectado (sem bateria).
+2025-03-12 19:17:14,219 - INFO - Desativado notificações do UAC!
+2025-03-12 19:17:15,245 - INFO - Todas as notificações foram desativadas.
+2025-03-12 19:17:16,260 - INFO - Verificando o status do .NET Framework 3.5...
+2025-03-12 19:17:18,278 - INFO - Ativando o .NET Framework 3.5...
+2025-03-12 19:17:26,670 - INFO - .NET Framework 3.5 ativado com sucesso.
+2025-03-12 19:18:04,992 - INFO - PC detectado (sem bateria).
+2025-03-12 19:18:08,832 - INFO - Desativado notificações do UAC!
+2025-03-12 19:18:09,856 - INFO - Todas as notificações foram desativadas.
+2025-03-12 19:18:10,867 - INFO - Verificando o status do .NET Framework 3.5...
+2025-03-12 19:18:12,720 - INFO - Ativando o .NET Framework 3.5...
+2025-03-12 19:18:19,308 - INFO - .NET Framework 3.5 ativado com sucesso.
+2025-03-12 19:19:35,070 - INFO - PC detectado (sem bateria).
+2025-03-12 19:19:40,190 - INFO - Desativado notificações do UAC!
+2025-03-12 19:19:41,224 - INFO - Todas as notificações foram desativadas.
+2025-03-12 19:19:42,245 - INFO - Verificando o status do .NET Framework 3.5...
+2025-03-12 19:19:44,169 - INFO - Ativando o .NET Framework 3.5...
+2025-03-12 19:19:50,904 - INFO - .NET Framework 3.5 ativado com sucesso.
+2025-03-14 09:50:51,974 - INFO - PC detectado (sem bateria).
+2025-03-14 09:53:15,116 - INFO - PC detectado (sem bateria).
+2025-03-14 09:56:11,361 - INFO - PC detectado (sem bateria).
+2025-03-14 09:58:28,269 - INFO - PC detectado (sem bateria).
+2025-03-14 10:00:47,917 - INFO - PC detectado (sem bateria).
